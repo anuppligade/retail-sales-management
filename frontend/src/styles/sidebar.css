@@ -1,0 +1,36 @@
+.sidebar {
+  width: 220px;
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  background: #f2f2f2;
+  padding: 20px;
+  color: #fff;
+}
+
+.sidebar-title {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 25px;
+}
+
+.sidebar-menu {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar-menu li {
+  margin-bottom: 14px;
+}
+
+.sidebar-menu li a {
+  text-decoration: none;
+  color: black;
+  font-size: 16px;
+}
+
+.sidebar-menu li.active a {
+  color: black;
+  font-weight: bold;
+}
