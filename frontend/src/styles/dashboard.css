@@ -1,0 +1,18 @@
+.dashboard-card {
+  border-radius: 10px;
+  transition: 0.2s ease-in-out;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.chart-placeholder {
+  height: 220px;
+  background: #f1f1f1;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
