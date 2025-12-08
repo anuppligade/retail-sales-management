@@ -1,77 +1,41 @@
-export const buildQuery = (q) => {
-  let filter = {};
+import { getDB } from "../utils/db.js";
+import { buildQuery, buildSort } from "./queryBuilder.js";
 
-  // 🔍 SEARCH (Customer Name OR Phone Number)
-  if (q.search) {
-  filter.$or = [
-    { "Customer Name": { $regex: q.search, $options: "i" } },
+export const getAllSales = async (q) => {
+  const pool = getDB(); // ⭐ MUST be inside function
 
-    // PHONE NUMBER FIX (for numeric fields)
-    {
-      $expr: {
-        $regexMatch: {
-          input: { $toString: "$Phone Number" },
-          regex: q.search,
-          options: "i"
-        }
-      }
-    }
-  ];
-}
-
-
-  // 🧍 Gender filter
-  if (q.gender) {
-    filter["Gender"] = { $in: q.gender.split(",") };
+  if (!pool) {
+    throw new Error("MySQL pool not initialized. Call connectDB() first.");
   }
 
-  // 🌍 Region filter
-  if (q.region) {
-    filter["Customer Region"] = { $in: q.region.split(",") };
-  }
+  const { where, values } = buildQuery(q);
+  const sort = buildSort(q.sort, q.order);
 
-  // 🏷 Category filter
-  if (q.category) {
-    filter["Product Category"] = { $in: q.category.split(",") };
-  }
+  const page = Number(q.page) || 1;
+  const limit = Number(q.limit) || 20;
+  const offset = (page - 1) * limit;
 
-  // 🏷 Tags (string contains)
-  if (q.tags) {
-    const tagList = q.tags.split(",");
-    filter["Tags"] = { $regex: tagList.join("|"), $options: "i" };
-  }
+  const sql = `
+    SELECT * 
+    FROM sales
+    ${where}
+    ${sort}
+    LIMIT ? OFFSET ?
+  `;
 
-  // 💳 Payment Method
-  if (q.payment) {
-    filter["Payment Method"] = { $in: q.payment.split(",") };
-  }
+  console.log("SQL:", sql);
+  console.log("VALUES:", [...values, limit, offset]);
 
-  // 🔢 Age range
-  if (q.ageMin || q.ageMax) {
-    filter["Age"] = {};
-    if (q.ageMin) filter["Age"].$gte = Number(q.ageMin);
-    if (q.ageMax) filter["Age"].$lte = Number(q.ageMax);
-  }
+  const [rows] = await pool.query(sql, [...values, limit, offset]);
 
-  // 📅 Date range
-  if (q.dateStart || q.dateEnd) {
-    filter["Date"] = {};
-    if (q.dateStart) filter["Date"].$gte = new Date(q.dateStart);
-    if (q.dateEnd) filter["Date"].$lte = new Date(q.dateEnd);
-  }
+  // Total count
+  const countSql = `SELECT COUNT(*) AS total FROM sales ${where}`;
+  const [countRows] = await pool.query(countSql, values);
 
-  return filter;
-};
-
-// 🔽 Sorting Logic Updated
-export const buildSort = (key, order = "desc") => {
-  const dir = order === "asc" ? 1 : -1;
-
-  const sortMap = {
-    date: { "Date": dir * -1 },
-    quantity: { "Quantity": dir },
-    customerName: { "Customer Name": dir }
+  return {
+    data: rows,
+    total: countRows[0].total,
+    page,
+    limit,
   };
-
-  return sortMap[key] || { "Date": -1 };
 };

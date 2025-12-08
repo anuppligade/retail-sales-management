@@ -1,68 +1,66 @@
-import Sales from "../models/Sales.js";
-import { buildQuery, buildSort } from "../services/salesService.js";
+import { getAllSales } from "../services/salesService.js";
 
 export const getSales = async (req, res) => {
   try {
-    const filter = buildQuery(req.query);
-    const sort = buildSort(req.query.sort, req.query.order);
+    const result = await getAllSales(req.query);
 
-    const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
+    // Safety check
+    if (!result || !result.data) {
+      return res.json({
+        page: result?.page || 1,
+        totalResults: 0,
+        totalPages: 0,
+        data: []
+      });
+    }
 
-    const [rawData, total] = await Promise.all([
-      Sales.find(filter).sort(sort).skip(skip).limit(limit),
-      Sales.countDocuments(filter)
-    ]);
+    // Format and convert MySQL string numbers -> JavaScript numbers
+    const formatted = result.data.map((item) => ({
+      id: item.id ?? null,
 
-    // 🔥 MAP DATA — convert Excel-style fields to frontend fields
-    const data = rawData.map(item => ({
-      _id: item._id,
+      transactionId: item.transaction_id ?? null,
+      date: item.date ?? null,
 
-      customerId: item["Customer ID"],
-      customerName: item["Customer Name"],
-      phoneNumber: item["Phone Number"],
-      gender: item["Gender"],
-      age: item["Age"],
-      customerRegion: item["Customer Region"],
-      customerType: item["Customer Type"],
-      transactionId: item["Transaction ID"],
+      customerId: item.customer_id ?? null,
+      customerName: item.customer_name ?? null,
+      phoneNumber: item.phone_number ?? null,
+      gender: item.gender ?? null,
+      age: Number(item.age) || 0,
+      customerRegion: item.customer_region ?? null,
+      customerType: item.customer_type ?? null,
 
-      productId: item["Product ID"],
-      productName: item["Product Name"],
-      brand: item["Brand"],
-      productCategory: item["Product Category"],
+      productId: item.product_id ?? null,
+      productName: item.product_name ?? null,
+      brand: item.brand ?? null,
+      productCategory: item.product_category ?? null,
 
-      tags: typeof item["Tags"] === "string"
-        ? item["Tags"].split(",").map(t => t.trim())
-        : [],
+      tags: item.tags ? item.tags.split(",").map(t => t.trim()) : [],
 
-      quantity: item["Quantity"],
-      pricePerUnit: item["Price per Unit"],
-      discountPercentage: item["Discount Percentage"],
-      totalAmount: item["Total Amount"],
-      finalAmount: item["Final Amount"],
+      // ⭐ Convert numeric strings to actual numbers
+      quantity: Number(item.quantity) || 0,
+      pricePerUnit: Number(item.price_per_unit) || 0,
+      discountPercentage: Number(item.discount_percentage) || 0,
+      totalAmount: Number(item.total_amount) || 0,
+      finalAmount: Number(item.final_amount) || 0,
 
-      // ✅ FIXED DATE
-      date: item["Date"] ? new Date(item["Date"]) : null,
-
-      paymentMethod: item["Payment Method"],
-      orderStatus: item["Order Status"],
-      deliveryType: item["Delivery Type"],
-      storeId: item["Store ID"],
-      storeLocation: item["Store Location"],
-      salespersonId: item["Salesperson ID"],
-      employeeName: item["Employee Name"]
+      paymentMethod: item.payment_method ?? null,
+      orderStatus: item.order_status ?? null,
+      deliveryType: item.delivery_type ?? null,
+      storeId: item.store_id ?? null,
+      storeLocation: item.store_location ?? null,
+      salespersonId: item.salesperson_id ?? null,
+      employeeName: item.employee_name ?? null
     }));
 
     res.json({
-      page,
-      totalPages: Math.ceil(total / limit),
-      totalResults: total,
-      data
+      page: result.page,
+      totalResults: result.total,
+      totalPages: Math.ceil(result.total / result.limit),
+      data: formatted
     });
 
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("Error in controller:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
